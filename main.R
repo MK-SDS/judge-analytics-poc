@@ -40,134 +40,102 @@ if ( str_detect(getwd(), 'neil') ) {
 }
 
 
-
-
 pdf.mine<<-function(x){
+    for(ipath in cse.dir){
 
+        tstv<<-pdf_text(ipath )%>%
+        readr::read_lines()
 
-for(ipath in cse.dir){
+        ##########Extract judge name:
 
-tstv<<-pdf_text(ipath )%>%
-readr::read_lines()
+        #add boundary for grep for safety:
+        jvaris<<-paste("\\b","HONOURABLE","\\b",sep="")
+        fnd.jdge<<-grep(jvaris,tstv)
 
+        #cases begin at cut-off, case name index +2:
+        cse.cut<<-fnd.jdge+2
 
-##########Extract judge name:
+        #split just in case theres more than 1 judge:
+        fnd.jdgesplt<<-strsplit(tstv[fnd.jdge],"AND") 
 
-#add boundary for grep for safety:
 
-jvaris<<-paste("\\b","HONOURABLE","\\b",sep="")
+        fnd.jdge<<-word(unlist(fnd.jdgesplt)[!unlist(fnd.jdgesplt) %in% ""], 2, sep="HONOURABLE")
 
-fnd.jdge<<-grep(jvaris,tstv)
+        #Remove punctuation & remove extra white space:
+        fnd.jdge<<-gsub("[^A-Za-z0-9]", " ", str_squish(fnd.jdge))
 
-#cases begin at cut-off, case name index +2:
+        #add "and" if more than 1 judge:
+        if(length(fnd.jdge)>1){
+            fnd.jdge<<-paste(fnd.jdge,collapse=" AND ")
+        }
 
-cse.cut<<-fnd.jdge+2
 
-#split just in case theres more than 1 judge:
+        raw.cases<<-tstv[cse.cut:length(tstv)]
 
-fnd.jdgesplt<<-strsplit(tstv[fnd.jdge],"AND") 
+        #get cases only:
+        raw.casefnd<<-grep(paste("\\b","vs","\\b",sep=""),raw.cases)
 
+        if(length(raw.casefnd)==0){
+            #raw.casefnd<<-raw.cases
+            #remove leading numbers & extra white space:
+            #cases<<-substring(raw.casefnd, 2)
 
-fnd.jdge<<-word(unlist(fnd.jdgesplt)[!unlist(fnd.jdgesplt) %in% ""], 2, sep="HONOURABLE")
+            cases<<-str_squish(raw.cases[!raw.cases %in% ""])
+            cases<<-cases[!cases %in% "ADMISSIONS"]
 
-#Remove punctuation & remove extra white space:
-fnd.jdge<<-gsub("[^A-Za-z0-9]", " ", str_squish(fnd.jdge))
+        }else if(length(raw.casefnd)>0){
+            cases<<-raw.cases[raw.casefnd]
+            #remove leading numbers & extra white space:
+            cases<<-substring(cases, 3)
+            cases<<-str_squish(cases)
+        }
 
-#add "and" if more than 1 judge:
+        #get dates:
 
-if(length(fnd.jdge)>1){
+        #There are spelling mistakes in some of the PDF's, "OCTOER" for example, so i add it explicitly. 
+        #We may miss the ones that are unsupervised. if you come across one, just add it manually to the below grep:
 
-fnd.jdge<<-paste(fnd.jdge,collapse=" AND ")
+        dtes<<-grep(paste(tolower(c(format(ISOdate(2004,1:12,1),"%B"),"OCTOER")),collapse="|"),tolower(tstv),value=TRUE)[1]
 
-}
+        #bit of a risk splitting at the semi colon but what the heck:
 
+        dte<<-last(unlist(strsplit(dtes,":")))
 
+        #extract case names and case numbers:
 
-raw.cases<<-tstv[cse.cut:length(tstv)]
+        for(cs in cases){
 
-#get cases only:
+            values.v<<-vector()
 
-raw.casefnd<<-grep(paste("\\b","vs","\\b",sep=""),raw.cases)
+            #extract case number:
+            case.no<<-last(unlist(strsplit(cs," "))) 
 
-if(length(raw.casefnd)==0){
+            #define line vector:
+            ln.v<<-unlist(strsplit(cs," "))
 
-#raw.casefnd<<-raw.cases
+            case.name<<-paste(ln.v[1:length(ln.v)-1],collapse=" ")
 
-#remove leading numbers & extra white space:
-#cases<<-substring(raw.casefnd, 2)
+            tmp.df<<-data.frame(Judge=fnd.jdge,Date=dte,Name=case.name,Case_No=case.no,stringsAsFactors=FALSE)
 
+            tmp.df<<-data.frame(Judge=fnd.jdge,Date=dte,Name=case.name,Case_No=case.no,stringsAsFactors=FALSE)
 
-cases<<-str_squish(raw.cases[!raw.cases %in% ""])
-cases<<-cases[!cases %in% "ADMISSIONS"]
+            #add to global list:
 
-}else if(length(raw.casefnd)>0){
+            values.list[[cs]] <-tmp.df
 
-cases<<-raw.cases[raw.casefnd]
+        }
 
-#remove leading numbers & extra white space:
-cases<<-substring(cases, 3)
+        tmp.global.cases<<-do.call(rbind,values.list )
 
+        tmp.global.cases<<-na.omit(tmp.global.cases)
 
-cases<<-str_squish(cases)
+        all.cases.final<<-rbind(all.cases.final,tmp.global.cases)
 
-}
+        #remove duplicate rows:
 
+        all.cases.final<<-distinct(all.cases.final)
 
-
-#get dates:
-
-#There are spelling mistakes in some of the PDF's, "OCTOER" for example, so i add it explicitly. 
-#We may miss the ones that are unsupervised. if you come across one, just add it manually to the below grep:
-
-dtes<<-grep(paste(tolower(c(format(ISOdate(2004,1:12,1),"%B"),"OCTOER")),collapse="|"),tolower(tstv),value=TRUE)[1]
-
-#bit of a risk splitting at the semi colon but what the heck:
-
-dte<<-last(unlist(strsplit(dtes,":")))
-
-
-
-
-
-
-#extract case names and case numbers:
-
-for(cs in cases){
-
-values.v<<-vector()
-
-#extract case number:
-
-case.no<<-last(unlist(strsplit(cs," "))) 
-
-#define line vector:
-
-ln.v<<-unlist(strsplit(cs," "))
-
-case.name<<-paste(ln.v[1:length(ln.v)-1],collapse=" ")
-
-
-tmp.df<<-data.frame(Judge=fnd.jdge,Date=dte,Name=case.name,Case_No=case.no,stringsAsFactors=FALSE)
-
-tmp.df<<-data.frame(Judge=fnd.jdge,Date=dte,Name=case.name,Case_No=case.no,stringsAsFactors=FALSE)
-
-#add to global list:
-
-values.list[[cs]] <-tmp.df
-
-}
-
-tmp.global.cases<<-do.call(rbind,values.list )
-
-tmp.global.cases<<-na.omit(tmp.global.cases)
-
-all.cases.final<<-rbind(all.cases.final,tmp.global.cases)
-
-#remove duplicate rows:
-
-all.cases.final<<-distinct(all.cases.final)
-
-}
+    }
 }
 
 #Run function:
