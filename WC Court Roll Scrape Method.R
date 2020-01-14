@@ -18,12 +18,29 @@ library(tidyverse)
 values.list<<-list()
 all.cases.final<<-data.frame(Judge=character(0),Date=character(0),Name=character(0),Case_No=character(0),stringsAsFactors=FALSE)
 
-#This is the file path that goes into the loop. The location of the cases:
 
-cse.dir<<-dir("C:/Users/8460p/Documents/UCT Case")
+# Directory Setup
+if ( str_detect(getwd(), 'neil') ) {
+    print("Neil environment detected")
+    # No need to setwd, as I'm running from the script directory
 
-#set working directory to where the folder is:
-setwd("C:/Users\8460p/Documents/UCT Case")
+    cse.dir<<-dir(paste(getwd(), 'local_storage', sep='/'))
+    print(cse.dir)
+
+} else {
+    print("Mkhuseli environment detected")
+
+    #This is the file path that goes into the loop. The location of the cases:
+    cse.dir<<-dir("C:/Users/8460p/Documents/UCT Case")
+
+    #set working directory to where the folder is:
+    # TODO: Please check backslash character. It has to be 
+    # escaped on Linux. Should it be forwardslash?
+    setwd("C:/Users\\8460p/Documents/UCT Case")
+}
+
+
+
 
 pdf.mine<<-function(x){
 
